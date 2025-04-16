@@ -627,53 +627,114 @@
             background: radial-gradient(circle at 30% 30%, #3a5e78, #1a2a3a);
             box-shadow: 0 0 50px rgba(58, 94, 120, 0.5);
             opacity: 0.8;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .planet::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 70% 20%, rgba(255,255,255,0.8) 0%, transparent 30%);
+            border-radius: 50%;
+        }
+        
+        .planet::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 70%, rgba(100,150,200,0.3) 0%, transparent 20%),
+                radial-gradient(circle at 60% 80%, rgba(150,100,50,0.2) 0%, transparent 15%);
+            border-radius: 50%;
         }
         
         .moon {
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, #999, #555);
-    box-shadow: 0 0 30px rgba(200, 200, 200, 0.3);
-    opacity: 0.7;
-    position: relative;
-    overflow: hidden;
-}
-
-.moon::before {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 50%;
-    top: 20%;
-    left: 30%;
-    animation: moveCrater 15s linear infinite;
-}
-
-@keyframes moveCrater {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(40px); }
-}
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #999, #555);
+            box-shadow: 0 0 30px rgba(200, 200, 200, 0.3);
+            opacity: 0.7;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .moon::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 40% 30%, rgba(0,0,0,0.3) 0%, transparent 10%),
+                radial-gradient(circle at 60% 70%, rgba(0,0,0,0.4) 0%, transparent 15%),
+                radial-gradient(circle at 20% 50%, rgba(0,0,0,0.2) 0%, transparent 8%);
+            border-radius: 50%;
+        }
         
         .star {
             position: absolute;
             background: white;
             border-radius: 50%;
             animation: twinkle 2s infinite alternate;
+            box-shadow: 0 0 10px white;
         }
         
         @keyframes twinkle {
-            0% { opacity: 0.3; }
-            100% { opacity: 1; }
+            0% { opacity: 0.3; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); }
         }
         
         .comet {
             position: absolute;
-            width: 60px;
-            height: 5px;
-            background: linear-gradient(90deg, rgba(255,255,255,0), rgba(200,230,255,0.8));
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, rgba(255,255,255,0), rgba(200,230,255,0.8), rgba(255,255,255,0));
             transform-origin: left center;
-            border-radius: 5px;
+            border-radius: 4px;
+            filter: blur(1px);
+            animation: cometTrail 2s linear infinite;
+        }
+        
+        @keyframes cometTrail {
+            0% { opacity: 0; transform: translateX(0) translateY(0); }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(500px) translateY(100px); }
+        }
+        
+        .asteroid {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #777, #333);
+            border-radius: 50%;
+            box-shadow: 
+                inset -5px -5px 10px rgba(0,0,0,0.5),
+                inset 2px 2px 5px rgba(255,255,255,0.1);
+            transform: rotate(0deg);
+            animation: rotateAsteroid 20s linear infinite;
+        }
+        
+        @keyframes rotateAsteroid {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .nebula {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgba(100,50,200,0.1), transparent 70%);
+            filter: blur(30px);
+            opacity: 0.5;
+            animation: pulseNebula 15s infinite alternate;
+        }
+        
+        @keyframes pulseNebula {
+            0% { opacity: 0.3; transform: scale(0.9); }
+            100% { opacity: 0.7; transform: scale(1.1); }
         }
         
         /* Mobil uyumluluk */
@@ -1040,17 +1101,18 @@
         // Oyun sınıfları
         class Player {
             constructor() {
-                this.width = 60;
+                this.width = 80;
                 this.height = 60;
                 this.x = canvas.width / 2 - this.width / 2;
                 this.y = canvas.height - this.height - 20;
                 this.speed = 6;
                 this.color = '#4cafff';
-                this.shootDelay = 300; // ms
+                this.shootDelay = 300;
                 this.lastShot = 0;
                 this.powerLevel = 1;
                 this.invulnerable = false;
                 this.invulnerabilityTime = 0;
+                this.engineGlow = 0;
             }
             
             update() {
@@ -1083,38 +1145,71 @@
                     ctx.globalAlpha = 0.5;
                 }
                 
-                // Ana gövde
+                // Motor ışıltısı
+                this.engineGlow = (this.engineGlow + 0.1) % (Math.PI * 2);
+                const glowIntensity = Math.sin(this.engineGlow) * 0.3 + 0.7;
+                
+                // Gemi gövdesi
                 ctx.fillStyle = this.color;
                 ctx.beginPath();
-                ctx.moveTo(this.x + this.width/2, this.y);
-                ctx.lineTo(this.x + this.width, this.y + this.height/2);
-                ctx.lineTo(this.x + this.width, this.y + this.height);
-                ctx.lineTo(this.x, this.y + this.height);
-                ctx.lineTo(this.x, this.y + this.height/2);
+                // Ana gövde
+                ctx.moveTo(this.x + this.width * 0.3, this.y + this.height * 0.2);
+                ctx.lineTo(this.x + this.width * 0.7, this.y + this.height * 0.2);
+                ctx.lineTo(this.x + this.width * 0.9, this.y + this.height * 0.5);
+                ctx.lineTo(this.x + this.width * 0.7, this.y + this.height * 0.8);
+                ctx.lineTo(this.x + this.width * 0.3, this.y + this.height * 0.8);
+                ctx.lineTo(this.x + this.width * 0.1, this.y + this.height * 0.5);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Kanatlar
+                ctx.fillStyle = '#2a7fcc';
+                ctx.beginPath();
+                // Sol kanat
+                ctx.moveTo(this.x + this.width * 0.2, this.y + this.height * 0.4);
+                ctx.lineTo(this.x, this.y + this.height * 0.6);
+                ctx.lineTo(this.x + this.width * 0.2, this.y + this.height * 0.6);
+                ctx.closePath();
+                ctx.fill();
+                // Sağ kanat
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width * 0.8, this.y + this.height * 0.4);
+                ctx.lineTo(this.x + this.width, this.y + this.height * 0.6);
+                ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.6);
                 ctx.closePath();
                 ctx.fill();
                 
                 // Motor alevi
-                ctx.fillStyle = '#ff6600';
+                const engineColor = `rgba(255, ${Math.floor(100 + glowIntensity * 155)}, 0, ${glowIntensity})`;
+                ctx.fillStyle = engineColor;
                 ctx.beginPath();
-                ctx.moveTo(this.x + this.width/3, this.y + this.height);
-                ctx.lineTo(this.x + 2*this.width/3, this.y + this.height);
-                ctx.lineTo(this.x + this.width/2, this.y + this.height + 15);
+                ctx.moveTo(this.x + this.width * 0.35, this.y + this.height);
+                ctx.lineTo(this.x + this.width * 0.65, this.y + this.height);
+                ctx.lineTo(this.x + this.width * 0.5, this.y + this.height + 20 * glowIntensity);
                 ctx.closePath();
                 ctx.fill();
                 
-                // Silahlar (güç seviyesine göre)
+                // Detaylar
                 ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.3, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Silahlar (güç seviyesine göre)
+                ctx.fillStyle = '#00eaff';
                 if (this.powerLevel >= 1) {
-                    ctx.fillRect(this.x + this.width/2 - 3, this.y, 6, 15);
+                    // Ana silah
+                    ctx.fillRect(this.x + this.width * 0.48, this.y, 4, 15);
                 }
                 if (this.powerLevel >= 2) {
-                    ctx.fillRect(this.x + this.width/4 - 2, this.y + 5, 4, 10);
-                    ctx.fillRect(this.x + 3*this.width/4 - 2, this.y + 5, 4, 10);
+                    // Yan silahlar
+                    ctx.fillRect(this.x + this.width * 0.3, this.y + 10, 3, 10);
+                    ctx.fillRect(this.x + this.width * 0.67, this.y + 10, 3, 10);
                 }
                 if (this.powerLevel >= 3) {
-                    ctx.fillRect(this.x + this.width/6 - 1, this.y + 10, 2, 5);
-                    ctx.fillRect(this.x + 5*this.width/6 - 1, this.y + 10, 2, 5);
+                    // Ekstra silahlar
+                    ctx.fillRect(this.x + this.width * 0.2, this.y + 15, 2, 5);
+                    ctx.fillRect(this.x + this.width * 0.78, this.y + 15, 2, 5);
                 }
                 
                 ctx.restore();
@@ -1208,7 +1303,7 @@
         class Enemy {
             constructor(type = 'basic') {
                 this.type = type;
-                this.width = 40;
+                this.width = 50;
                 this.height = 40;
                 this.x = Math.random() * (canvas.width - this.width);
                 this.y = -this.height;
@@ -1216,15 +1311,18 @@
                 this.health = 1;
                 this.score = 10;
                 this.shootProbability = 0.002;
+                this.engineGlow = Math.random() * Math.PI * 2;
                 
                 // Düşman tipine göre özellikler
                 if (type === 'fast') {
                     this.color = '#ff3366';
                     this.speed = 4 + Math.random() * 2;
                     this.score = 15;
+                    this.width = 40;
+                    this.height = 30;
                 } else if (type === 'tank') {
                     this.color = '#ffd700';
-                    this.width = 60;
+                    this.width = 70;
                     this.height = 60;
                     this.speed = 1 + Math.random() * 0.5;
                     this.health = 3;
@@ -1233,6 +1331,8 @@
                     this.color = '#ff9500';
                     this.shootProbability = 0.01;
                     this.score = 20;
+                    this.width = 60;
+                    this.height = 45;
                 } else {
                     this.color = '#4cafff';
                 }
@@ -1251,13 +1351,63 @@
             }
             
             draw() {
-                ctx.fillStyle = this.color;
+                ctx.save();
                 
-                // Temel düşman şekli
+                // Motor ışıltısı
+                this.engineGlow += 0.1;
+                const glowIntensity = Math.sin(this.engineGlow) * 0.3 + 0.7;
+                
+                // Düşman gövdesi
+                ctx.fillStyle = this.color;
                 ctx.beginPath();
-                ctx.moveTo(this.x + this.width/2, this.y);
-                ctx.lineTo(this.x + this.width, this.y + this.height);
-                ctx.lineTo(this.x, this.y + this.height);
+                
+                if (this.type === 'fast') {
+                    // Hızlı düşman - aerodinamik tasarım
+                    ctx.moveTo(this.x + this.width * 0.5, this.y);
+                    ctx.lineTo(this.x + this.width, this.y + this.height * 0.7);
+                    ctx.lineTo(this.x + this.width * 0.7, this.y + this.height);
+                    ctx.lineTo(this.x + this.width * 0.3, this.y + this.height);
+                    ctx.lineTo(this.x, this.y + this.height * 0.7);
+                    ctx.closePath();
+                } else if (this.type === 'tank') {
+                    // Tank düşman - büyük ve güçlü
+                    ctx.moveTo(this.x + this.width * 0.3, this.y);
+                    ctx.lineTo(this.x + this.width * 0.7, this.y);
+                    ctx.lineTo(this.x + this.width, this.y + this.height * 0.3);
+                    ctx.lineTo(this.x + this.width, this.y + this.height * 0.7);
+                    ctx.lineTo(this.x + this.width * 0.7, this.y + this.height);
+                    ctx.lineTo(this.x + this.width * 0.3, this.y + this.height);
+                    ctx.lineTo(this.x, this.y + this.height * 0.7);
+                    ctx.lineTo(this.x, this.y + this.height * 0.3);
+                    ctx.closePath();
+                } else if (this.type === 'shooter') {
+                    // Atıcı düşman - silah odaklı
+                    ctx.moveTo(this.x + this.width * 0.5, this.y);
+                    ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.3);
+                    ctx.lineTo(this.x + this.width, this.y + this.height * 0.5);
+                    ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.7);
+                    ctx.lineTo(this.x + this.width * 0.5, this.y + this.height);
+                    ctx.lineTo(this.x + this.width * 0.2, this.y + this.height * 0.7);
+                    ctx.lineTo(this.x, this.y + this.height * 0.5);
+                    ctx.lineTo(this.x + this.width * 0.2, this.y + this.height * 0.3);
+                    ctx.closePath();
+                } else {
+                    // Temel düşman - standart tasarım
+                    ctx.moveTo(this.x + this.width * 0.5, this.y);
+                    ctx.lineTo(this.x + this.width, this.y + this.height);
+                    ctx.lineTo(this.x, this.y + this.height);
+                    ctx.closePath();
+                }
+                
+                ctx.fill();
+                
+                // Motor alevi
+                const engineColor = `rgba(255, ${Math.floor(100 + glowIntensity * 155)}, 0, ${glowIntensity})`;
+                ctx.fillStyle = engineColor;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width * 0.3, this.y + this.height);
+                ctx.lineTo(this.x + this.width * 0.7, this.y + this.height);
+                ctx.lineTo(this.x + this.width * 0.5, this.y + this.height + 10 * glowIntensity);
                 ctx.closePath();
                 ctx.fill();
                 
@@ -1265,19 +1415,28 @@
                 if (this.type === 'tank') {
                     ctx.fillStyle = '#ffffff';
                     ctx.beginPath();
-                    ctx.arc(this.x + this.width/2, this.y + this.height/2, 8, 0, Math.PI*2);
+                    ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.5, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.5, 5, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 else if (this.type === 'shooter') {
                     ctx.fillStyle = '#ff0000';
-                    ctx.fillRect(this.x + this.width/2 - 5, this.y + this.height/2 - 5, 10, 10);
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.3, 6, 0, Math.PI * 2);
+                    ctx.fill();
                 }
                 else if (this.type === 'fast') {
                     ctx.fillStyle = 'rgba(255,255,255,0.7)';
                     ctx.beginPath();
-                    ctx.arc(this.x + this.width/2, this.y + this.height/2, 5, 0, Math.PI*2);
+                    ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.5, 4, 0, Math.PI * 2);
                     ctx.fill();
                 }
+                
+                ctx.restore();
             }
             
             shoot() {
@@ -1414,48 +1573,82 @@
             }
             
             draw() {
+                ctx.save();
+                
+                // Motor ışıltısı
+                const glowIntensity = 0.7 + Math.sin(Date.now() / 200) * 0.3;
+                
+                // Boss gövdesi
                 ctx.fillStyle = this.color;
+                ctx.beginPath();
                 
                 // Ana gövde
-                ctx.beginPath();
-                ctx.moveTo(this.x + this.width / 2, this.y);
-                ctx.lineTo(this.x + this.width, this.y + this.height / 2);
-                ctx.lineTo(this.x + this.width - 40, this.y + this.height);
-                ctx.lineTo(this.x + 40, this.y + this.height);
-                ctx.lineTo(this.x, this.y + this.height / 2);
+                ctx.moveTo(this.x + this.width * 0.3, this.y);
+                ctx.lineTo(this.x + this.width * 0.7, this.y);
+                ctx.lineTo(this.x + this.width, this.y + this.height * 0.3);
+                ctx.lineTo(this.x + this.width, this.y + this.height * 0.7);
+                ctx.lineTo(this.x + this.width * 0.7, this.y + this.height);
+                ctx.lineTo(this.x + this.width * 0.3, this.y + this.height);
+                ctx.lineTo(this.x, this.y + this.height * 0.7);
+                ctx.lineTo(this.x, this.y + this.height * 0.3);
                 ctx.closePath();
                 ctx.fill();
                 
-                // Detaylar
-                ctx.fillStyle = '#ffffff';
+                // Orta bölüm
+                ctx.fillStyle = this.type === 'emperor' ? '#ff0000' : '#9500ff';
                 ctx.beginPath();
-                ctx.arc(this.x + this.width / 2, this.y + this.height / 2, 30, 0, Math.PI * 2);
+                ctx.moveTo(this.x + this.width * 0.35, this.y + this.height * 0.2);
+                ctx.lineTo(this.x + this.width * 0.65, this.y + this.height * 0.2);
+                ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.5);
+                ctx.lineTo(this.x + this.width * 0.65, this.y + this.height * 0.8);
+                ctx.lineTo(this.x + this.width * 0.35, this.y + this.height * 0.8);
+                ctx.lineTo(this.x + this.width * 0.2, this.y + this.height * 0.5);
+                ctx.closePath();
                 ctx.fill();
                 
-                ctx.fillStyle = this.color;
+                // Motor alevleri
+                const engineColor = `rgba(255, ${Math.floor(100 + glowIntensity * 155)}, 0, ${glowIntensity})`;
+                ctx.fillStyle = engineColor;
+                
+                // Ana motor
                 ctx.beginPath();
-                ctx.arc(this.x + this.width / 2, this.y + this.height / 2, 20, 0, Math.PI * 2);
+                ctx.moveTo(this.x + this.width * 0.4, this.y + this.height);
+                ctx.lineTo(this.x + this.width * 0.6, this.y + this.height);
+                ctx.lineTo(this.x + this.width * 0.5, this.y + this.height + 30 * glowIntensity);
+                ctx.closePath();
                 ctx.fill();
                 
-                // Kanatlar
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x - 30, this.y + 40, 30, 60);
-                ctx.fillRect(this.x + this.width, this.y + 40, 30, 60);
+                // Yan motorlar
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width * 0.2, this.y + this.height * 0.7);
+                ctx.lineTo(this.x + this.width * 0.3, this.y + this.height * 0.7);
+                ctx.lineTo(this.x + this.width * 0.25, this.y + this.height * 0.9);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width * 0.7, this.y + this.height * 0.7);
+                ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.7);
+                ctx.lineTo(this.x + this.width * 0.75, this.y + this.height * 0.9);
+                ctx.closePath();
+                ctx.fill();
                 
                 // Faz göstergeleri
                 if (this.phase >= 2) {
                     ctx.fillStyle = '#ff9500';
                     ctx.beginPath();
-                    ctx.arc(this.x + 50, this.y + this.height / 2, 10, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width * 0.25, this.y + this.height * 0.5, 8, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 
                 if (this.phase >= 3) {
                     ctx.fillStyle = '#ff9500';
                     ctx.beginPath();
-                    ctx.arc(this.x + this.width - 50, this.y + this.height / 2, 10, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.width * 0.75, this.y + this.height * 0.5, 8, 0, Math.PI * 2);
                     ctx.fill();
                 }
+                
+                ctx.restore();
             }
             
             shootBasicPattern() {
@@ -1856,8 +2049,8 @@
             // Dünya benzeri gezegen
             const earth = document.createElement('div');
             earth.className = 'space-decoration planet';
-            earth.style.width = '150px';
-            earth.style.height = '150px';
+            earth.style.width = '200px';
+            earth.style.height = '200px';
             earth.style.bottom = '50px';
             earth.style.left = '50px';
             container.appendChild(earth);
@@ -1865,14 +2058,21 @@
             // Ay
             const moon = document.createElement('div');
             moon.className = 'space-decoration moon';
-            moon.style.width = '60px';
-            moon.style.height = '60px';
+            moon.style.width = '80px';
+            moon.style.height = '80px';
             moon.style.top = '100px';
-            moon.style.right = '80px';
+            moon.style.right = '100px';
             container.appendChild(moon);
             
+            // Nebula (bulutsu)
+            const nebula = document.createElement('div');
+            nebula.className = 'space-decoration nebula';
+            nebula.style.top = '30%';
+            nebula.style.left = '70%';
+            container.appendChild(nebula);
+            
             // Yıldızlar
-            for (let i = 0; i < 50; i++) {
+            for (let i = 0; i < 100; i++) {
                 const star = document.createElement('div');
                 star.className = 'space-decoration star';
                 const size = Math.random() * 3 + 1;
@@ -1889,8 +2089,37 @@
             comet.className = 'space-decoration comet';
             comet.style.top = '20%';
             comet.style.right = '10%';
-            comet.style.transform = 'rotate(-30deg)';
             container.appendChild(comet);
+            
+            // Asteroitler
+            for (let i = 0; i < 5; i++) {
+                const asteroid = document.createElement('div');
+                asteroid.className = 'space-decoration asteroid';
+                const size = Math.random() * 30 + 20;
+                asteroid.style.width = `${size}px`;
+                asteroid.style.height = `${size}px`;
+                asteroid.style.top = `${Math.random() * 100}%`;
+                asteroid.style.left = `${Math.random() * 100}%`;
+                asteroid.style.animationDuration = `${Math.random() * 10 + 10}s`;
+                container.appendChild(asteroid);
+            }
+            
+            // Uzak galaksiler
+            for (let i = 0; i < 3; i++) {
+                const galaxy = document.createElement('div');
+                galaxy.className = 'space-decoration';
+                galaxy.style.width = '150px';
+                galaxy.style.height = '150px';
+                galaxy.style.borderRadius = '50%';
+                galaxy.style.background = `radial-gradient(circle at ${Math.random() * 100}% ${Math.random() * 100}%, 
+                    rgba(${Math.random() * 100 + 100},${Math.random() * 100},${Math.random() * 100 + 150},0.1), 
+                    transparent 70%)`;
+                galaxy.style.filter = 'blur(2px)';
+                galaxy.style.top = `${Math.random() * 100}%`;
+                galaxy.style.left = `${Math.random() * 100}%`;
+                galaxy.style.opacity = '0.3';
+                container.appendChild(galaxy);
+            }
         }
         
         // Oyun başlatma ve ana döngü
