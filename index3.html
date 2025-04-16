@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hava Savaşçıları</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Exo 2', sans-serif;
+        }
+        
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1c3d 0%, #0f1028 100%);
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 100, 255, 0.4);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #1e3b70 0%, #090d2e 100%);
+            border-radius: 8px;
+        }
+        
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .ui-overlay .score {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 15px;
+            border-radius: 20px;
+            box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .ui-overlay .lives {
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 15px;
+            border-radius: 20px;
+            box-shadow: 0 0 10px rgba(255, 0, 100, 0.5);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .ui-overlay .life {
+            width: 20px;
+            height: 20px;
+            background: #ff3366;
+            clip-path: path('M10,0 C10,0 20,10 10,20 C0,10 10,0 10,0 Z');
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            min-width: 300px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.7);
+            z-index: 20;
+        }
+        
+        #game-over h1 {
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            font-weight: 800;
+            color: #ff3366;
+            text-shadow: 0 0 10px rgba(255, 0, 100, 0.7);
+        }
+        
+        #game-over p {
+            font-size: 1.5em;
+            margin-bottom: 30px;
+        }
+        
+        #final-score {
+            font-weight: 600;
+            color: #00eaff;
+        }
+        
+        #game-over button {
+            padding: 12px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ff3366 0%, #ff006e 100%);
+            border: none;
+            color: white;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(255, 0, 100, 0.4);
+        }
+        
+        #game-over button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 0, 100, 0.6);
+        }
+        
+        #game-over button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(255, 0, 100, 0.6);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            pointer-events: none;
+            opacity: 0.7;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="ui-overlay">
+            <div class="score">Skor: <span id="score-value">0</span></div>
+            <div class="lives" id="lives-container"></div>
+        </div>
+        <div id="controls-hint">
+            ← → ile hareket et | SPACE ile ateş et
+        </div>
+        <div id="game-over" class="hidden">
+            <h1>Oyun Bitti!</h1>
+            <p>Skor: <span id="final-score">0</span></p>
+            <button onclick="restartGame()">Tekrar Oyna</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800;
+        canvas.height = 600;
+
+        // Game assets
+        const playerImg = new Image();
+        const enemyImg = new Image();
+        const bulletImg = new Image();
+        const explosionImg = new Image();
+        const backgroundImg = new Image();
+        
+        // Set image sources using data URLs for immediate loading
+        playerImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjUgNUwxMCAzMEwxNSA0MEgzNUw0MCAzMEwyNSA1WiIgZmlsbD0iIzRjYWZmZiIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMjIgMzBMMjUgMTVMMjggMzBIMjJaIiBmaWxsPSIjZmZmIi8+PHBhdGggZD0iTTE1IDM1TDEwIDMwTDQwIDMwTDM1IDM1SDE1WiIgZmlsbD0iIzAwNzdiZiIvPjwvc3ZnPg==';
+        enemyImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjAgMzVMNSAyMEwxMCA1SDMwTDM1IDIwTDIwIDM1WiIgZmlsbD0iI2ZmMzM2NiIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNMTcgMTBMMjAgMjVMMjMgMTBIMTdaIiBmaWxsPSIjZmZmIi8+PHBhdGggZD0iTTEwIDVMMzAgNUwyNSAxNUgxNUwxMCA1WiIgZmlsbD0iI2MxMDA0NCIvPjwvc3ZnPg==';
+        bulletImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAxMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNSAwTDEwIDEwTDUgMjBMMCAxMEw1IDBaIiBmaWxsPSIjMDBlYWZmIi8+PC9zdmc+';
+        explosionImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyMCIgZmlsbD0iI2ZmZDcwMCIvPjxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjE1IiBmaWxsPSIjZmY5NTAwIi8+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iOCIgZmlsbD0iI2ZmNTcyMiIvPjxwYXRoIGQ9Ik0zMCAxMEwzNSA1TDM4IDE1TTQ1IDIwTDU1IDE4TDQ1IDI1TTUwIDMwTDU1IDM1TDQyIDM1TTQwIDQ1TDQ1IDU1TDM1IDQ1TTMwIDUwTDI1IDU1TDI4IDQ1TTIwIDQwTDEwIDQ1TDIwIDM1TTEwIDMwTDUgMjVMMTUgMjVNMTUgMTVMNSAxMEwyMCAxOCIgc3Ryb2tlPSIjZmZkMzAwIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=';
+        backgroundImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgdmlld0JveD0iMCAwIDgwMCA2MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSI2MDAiIGZpbGw9InVybCgjcGFpbnQwX2xpbmVhcikiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjIiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuNSIvPjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE1MCIgcj0iMSIgZmlsbD0id2hpdGUiIGZpbGwtb3BhY2l0eT0iMC43Ii8+PGNpcmNsZSBjeD0iMzAwIiBjeT0iNTAiIHI9IjEuNSIgZmlsbD0id2hpdGUiIGZpbGwtb3BhY2l0eT0iMC42Ii8+PGNpcmNsZSBjeD0iNDUwIiBjeT0iMTIwIiByPSIxIiBmaWxsPSJ3aGl0ZSIgZmlsbC1vcGFjaXR5PSIwLjgiLz48Y2lyY2xlIGN4PSI1ODAiIGN5PSI4MCIgcj0iMiIgZmlsbD0id2hpdGUiIGZpbGwtb3BhY2l0eT0iMC40Ii8+PGNpcmNsZSBjeD0iNjgwIiBjeT0iMTgwIiByPSIxLjUiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuNSIvPjxjaXJjbGUgY3g9Ijc1MCIgY3k9IjUwIiByPSIxIiBmaWxsPSJ3aGl0ZSIgZmlsbC1vcGFjaXR5PSIwLjciLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIyNTAiIHI9IjEiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuNSIvPjxjaXJjbGUgY3g9IjI4MCIgY3k9IjMwMCIgcj0iMS41IiBmaWxsPSJ3aGl0ZSIgZmlsbC1vcGFjaXR5PSIwLjYiLz48Y2lyY2xlIGN4PSI0MDAiIGN5PSIyMjAiIHI9IjEiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuOCIvPjxjaXJjbGUgY3g9IjUwMCIgY3k9IjMxMCIgcj0iMiIgZmlsbD0id2hpdGUiIGZpbGwtb3BhY2l0eT0iMC40Ii8+PGNpcmNsZSBjeD0iNjIwIiBjeT0iMjgwIiByPSIxLjUiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuNSIvPjxjaXJjbGUgY3g9IjcwMCIgY3k9IjM4MCIgcj0iMSIgZmlsbD0id2hpdGUiIGZpbGwtb3BhY2l0eT0iMC43Ii8+PGNpcmNsZSBjeD0iMjAwIiBjeT0iNDUwIiByPSIxIiBmaWxsPSJ3aGl0ZSIgZmlsbC1vcGFjaXR5PSIwLjYiLz48Y2lyY2xlIGN4PSIzMDAiIGN5PSI1MDAiIHI9IjEuNSIgZmlsbD0id2hpdGUiIGZpbGwtb3BhY2l0eT0iMC43Ii8+PGNpcmNsZSBjeD0iNDIwIiBjeT0iNDIwIiByPSIxIiBmaWxsPSJ3aGl0ZSIgZmlsbC1vcGFjaXR5PSIwLjQiLz48Y2lyY2xlIGN4PSI1MjAiIGN5PSI1MDAiIHI9IjIiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuNSIvPjxjaXJjbGUgY3g9IjYyMCIgY3k9IjQ1MCIgcj0iMS41IiBmaWxsPSJ3aGl0ZSIgZmlsbC1vcGFjaXR5PSIwLjYiLz48Y2lyY2xlIGN4PSI3NTAiIGN5PSI1MjAiIHI9IjEiIGZpbGw9IndoaXRlIiBmaWxsLW9wYWNpdHk9IjAuNSIvPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0icGFpbnQwX2xpbmVhciIgeDE9IjQwMCIgeTE9IjAiIHgyPSI0MDAiIHkyPSI2MDAiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBzdG9wLWNvbG9yPSIjMWUzYjcwIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDkwZDJlIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PC9zdmc+';
+
+        let player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 70,
+            width: 50,
+            height: 50,
+            speed: 6,
+            lives: 3
+        };
+
+        let bullets = [];
+        let enemies = [];
+        let explosions = [];
+        let stars = [];
+        let score = 0;
+        let gameOver = false;
+        let keys = {};
+        let gameStartTime = Date.now();
+
+        // Yıldızlar oluştur
+        for (let i = 0; i < 100; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2 + 0.5,
+                speed: Math.random() * 0.3 + 0.1
+            });
+        }
+
+        // Arayüz güncelleme
+        function updateUI() {
+            document.getElementById('score-value').textContent = score;
+            
+            const livesContainer = document.getElementById('lives-container');
+            livesContainer.innerHTML = '';
+            
+            for (let i = 0; i < player.lives; i++) {
+                const lifeElement = document.createElement('div');
+                lifeElement.className = 'life';
+                livesContainer.appendChild(lifeElement);
+            }
+        }
+
+        // Klavye kontrolleri
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space' && !gameOver) {
+                shootBullet();
+                // Uzay tuşunun sayfada kaydırma yapmasını engelle
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Mermi oluşturma
+        function shootBullet() {
+            // Ses efekti
+            playSound('shoot');
+            
+            bullets.push({
+                x: player.x + player.width / 2 - 5,
+                y: player.y,
+                width: 10,
+                height: 20,
+                speed: 10
+            });
+        }
+
+        // Düşman oluşturma
+        function spawnEnemy() {
+            if (!gameOver) {
+                const enemyWidth = 40;
+                const enemyHeight = 40;
+                
+                // Düşmanları rastgele hızlarda oluştur
+                const enemySpeed = Math.random() * 2 + 2 + Math.min(3, (Date.now() - gameStartTime) / 30000);
+                
+                enemies.push({
+                    x: Math.random() * (canvas.width - enemyWidth),
+                    y: -enemyHeight,
+                    width: enemyWidth,
+                    height: enemyHeight,
+                    speed: enemySpeed
+                });
+            }
+        }
+
+        // Patlama oluşturma
+        function createExplosion(x, y) {
+            // Ses efekti
+            playSound('explosion');
+            
+            explosions.push({
+                x: x,
+                y: y,
+                size: 60,
+                frame: 0,
+                maxFrames: 20
+            });
+        }
+
+        // Ses efekti oluşturma
+        function playSound(type) {
+            // İleri aşamada gerçek ses efektleri eklenebilir
+        }
+
+        // Çarpışma kontrolü
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y;
+        }
+
+        // Oyun döngüsü
+        function gameLoop() {
+            if (gameOver) return;
+
+            // Oyuncu hareketi
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += player.speed;
+
+            // Yıldızları hareket ettir
+            stars.forEach(star => {
+                star.y += star.speed;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+
+            // Mermi hareketi
+            bullets.forEach((bullet, index) => {
+                bullet.y -= bullet.speed;
+                if (bullet.y < -bullet.height) bullets.splice(index, 1);
+            });
+
+            // Düşman hareketi ve çarpışma
+            enemies.forEach((enemy, eIndex) => {
+                enemy.y += enemy.speed;
+                if (enemy.y > canvas.height) enemies.splice(eIndex, 1);
+
+                // Düşman-oyuncu çarpışması
+                if (checkCollision(player, enemy)) {
+                    player.lives--;
+                    createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                    enemies.splice(eIndex, 1);
+                    
+                    updateUI();
+                    
+                    if (player.lives <= 0) endGame();
+                }
+
+                // Mermi-düşman çarpışması
+                bullets.forEach((bullet, bIndex) => {
+                    if (checkCollision(bullet, enemy)) {
+                        bullets.splice(bIndex, 1);
+                        createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                        enemies.splice(eIndex, 1);
+                        score += 10;
+                        
+                        updateUI();
+                    }
+                });
+            });
+
+            // Patlamaları güncelle
+            explosions.forEach((explosion, index) => {
+                explosion.frame++;
+                if (explosion.frame >= explosion.maxFrames) {
+                    explosions.splice(index, 1);
+                }
+            });
+
+            // Ekranı çiz
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Çizim fonksiyonu
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Arkaplanı çiz
+            ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+
+            // Yıldızları çiz
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Oyuncuyu çiz
+            ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+
+            // Mermileri çiz
+            bullets.forEach(bullet => {
+                ctx.drawImage(bulletImg, bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+
+            // Düşmanları çiz
+            enemies.forEach(enemy => {
+                ctx.drawImage(enemyImg, enemy.x, enemy.y, enemy.width, enemy.height);
+            });
+
+            // Patlamaları çiz
+            explosions.forEach(explosion => {
+                const scale = 1 - explosion.frame / explosion.maxFrames;
+                const size = explosion.size * scale;
+                ctx.globalAlpha = scale;
+                ctx.drawImage(
+                    explosionImg, 
+                    explosion.x - size / 2, 
+                    explosion.y - size / 2, 
+                    size, 
+                    size
+                );
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        // Oyun sonu
+        function endGame() {
+            gameOver = true;
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('game-over').classList.remove('hidden');
+            document.getElementById('controls-hint').classList.add('hidden');
+        }
+
+        // Oyunu yeniden başlat
+        function restartGame() {
+            player = {
+                x: canvas.width / 2 - 25,
+                y: canvas.height - 70,
+                width: 50,
+                height: 50,
+                speed: 6,
+                lives: 3
+            };
+            bullets = [];
+            enemies = [];
+            explosions = [];
+            score = 0;
+            gameOver = false;
+            gameStartTime = Date.now();
+            
+            document.getElementById('game-over').classList.add('hidden');
+            document.getElementById('controls-hint').classList.remove('hidden');
+            
+            updateUI();
+            gameLoop();
+        }
+
+        // Düşman spawn zamanlayıcısı - zamanla hızlanır
+        setInterval(() => {
+            const elapsed = (Date.now() - gameStartTime) / 1000; // Saniye cinsinden geçen süre
+            const spawnInterval = Math.max(500, 1000 - elapsed * 5); // Zamanla azalan bir değer
+            
+            if (Math.random() < 1000 / spawnInterval) {
+                spawnEnemy();
+            }
+        }, 500);
+
+        // İlk olarak UI'ı güncelle
+        updateUI();
+
+        // Oyun kontrollerini 5 saniye sonra gizle
+        setTimeout(() => {
+            const controlsHint = document.getElementById('controls-hint');
+            controlsHint.style.opacity = '0';
+            controlsHint.style.transition = 'opacity 1s ease';
+        }, 5000);
+
+        // Oyunu başlat
+        gameLoop();
+
+        // Pencere boyutunu değiştirme olayını dinle
+        window.addEventListener('resize', () => {
+            // İleride responsive özellik eklenebilir
+        });
+    </script>
+</div>
