@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hava Savaşçıları</title>
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body>
+    <div id="space-decorations"></div> <!-- Bu div'i body içine taşıdık -->
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="ui-overlay">
+            <div class="ui-element score">
+                <span class="icon">🏆</span>
+                <span id="score-value">0</span>
+            </div>
+            <div class="ui-element level">
+                <span class="icon">⭐</span>
+                <span>Seviye <span id="level-value">1</span></span>
+            </div>
+            <div class="ui-element lives" id="lives-container"></div>
+        </div>
+        
+        <div class="ui-element mission" id="mission-indicator">
+            Görev: 10 düşman yok et
+            <div class="mission-progress" id="mission-progress">0/10</div>
+        </div>
+        
+        <div class="powerup-indicator" id="powerup-indicator">
+            <span class="icon">⚡</span>
+            <span id="powerup-text">Güçlendirme Aktif!</span>
+        </div>
+        
+        <div class="powerup-timer" id="powerup-timer">
+            <div class="powerup-timer-fill" id="powerup-timer-fill"></div>
+        </div>
+        
+        <div class="wave-announcement" id="wave-announcement">
+            Dalga <span id="wave-number">1</span>
+        </div>
+        
+        <div class="boss-health-container" id="boss-health-container">
+            <div class="boss-name" id="boss-name">Kızıl İmparator</div>
+            <div class="boss-health-bar" id="boss-health-bar"></div>
+        </div>
+        
+        <div class="level-progress">
+            <div class="level-progress-fill" id="level-progress-fill"></div>
+        </div>
+        
+        <div class="control-hint" id="controls-hint">
+            ← → ile hareket et | SPACE ile ateş et | P ile duraklat
+        </div>
+        
+        <div class="damage-overlay" id="damage-overlay"></div>
+        
+        <!-- Mobil kontroller -->
+        <div class="mobile-controls" id="mobile-controls" style="display: none;">
+            <div class="touch-button" id="mobile-left">◀</div>
+            <div class="touch-button" id="mobile-fire">🔥</div>
+            <div class="touch-button" id="mobile-right">▶</div>
+        </div>
+        
+        <!-- Ekranlar -->
+        <div class="screen-overlay" id="start-screen">
+            <h1 class="screen-title">Hava Savaşçıları</h1>
+            <p class="screen-content">
+                İnsanlığın son umudu sensin! Uzayın derinliklerinden gelen düşman filosuna karşı gezegenimizi savun. 
+                Düşman gemilerini yok et, güçlendirmeleri topla ve galaksinin en iyisi olmak için mücadele et!
+            </p>
+            <div>
+                <button class="btn" onclick="startGame()">OYUNA BAŞLA</button>
+                <button class="btn btn-secondary" onclick="showScreen('settings-screen')">AYARLAR</button>
+            </div>
+        </div>
+        
+        <div class="screen-overlay" id="tutorial-screen">
+            <h2 class="screen-subtitle">Oyun Kontrolleri</h2>
+            <div class="tutorial-hint">
+                <p>Uzay gemini kontrol etmek için klavyeni kullan</p>
+                <div class="tutorial-controls">
+                    <div class="tutorial-key">←</div>
+                    <div class="tutorial-key">→</div>
+                    <span>Hareket Et</span>
+                </div>
+                <div class="tutorial-controls">
+                    <div class="tutorial-key">SPACE</div>
+                    <span>Ateş Et</span>
+                </div>
+                <div class="tutorial-controls">
+                    <div class="tutorial-key">P</div>
+                    <span>Duraklat</span>
+                </div>
+            </div>
+            <button class="btn" onclick="completeTutorial()">ANLADIM</button>
+        </div>
+        
+        <div class="screen-overlay" id="game-over-screen">
+            <h1 class="screen-title">Oyun Bitti!</h1>
+            <h2 class="screen-subtitle">Skorun</h2>
+            <div class="score-display" id="final-score">0</div>
+            
+            <div class="highscore-list" id="highscore-container">
+                <h3>En Yüksek Skorlar</h3>
+                <div id="highscores-list"></div>
+            </div>
+            
+            <div>
+                <button class="btn btn-danger" onclick="restartGame()">TEKRAR OYNA</button>
+                <button class="btn btn-secondary" onclick="showScreen('start-screen')">ANA MENÜ</button>
+            </div>
+        </div>
+        
+        <div class="screen-overlay" id="pause-screen">
+            <h1 class="screen-title">Duraklatıldı</h1>
+            <div>
+                <button class="btn" onclick="resumeGame()">DEVAM ET</button>
+                <button class="btn btn-secondary" onclick="showScreen('settings-screen')">AYARLAR</button>
+                <button class="btn btn-danger" onclick="showScreen('start-screen')">ANA MENÜ</button>
+            </div>
+        </div>
+        
+        <div class="screen-overlay" id="next-level-screen">
+            <h1 class="screen-title">Seviye Tamamlandı!</h1>
+            <h2 class="screen-subtitle">Seviye <span id="completed-level">1</span></h2>
+            <div class="score-display">+<span id="level-bonus">100</span> puan</div>
+            <button class="btn" onclick="startNextLevel()">DEVAM ET</button>
+        </div>
+        
+        <div class="screen-overlay" id="settings-screen">
+            <h1 class="screen-title">Ayarlar</h1>
+            <div class="settings-menu">
+                <div class="settings-group">
+                    <h3>Ses Ayarları</h3>
+                    <div class="settings-row">
+                        <span class="settings-label">Ana Ses</span>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="1" step="0.1" value="0.7" class="slider" id="master-volume">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-label">Efekt Sesi</span>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="1" step="0.1" value="0.8" class="slider" id="sfx-volume">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-label">Müzik</span>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="1" step="0.1" value="0.5" class="slider" id="music-volume">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>Oyun Ayarları</h3>
+                    <h4>Zorluk Seviyesi</h4>
+                    <div class="difficulty-option">
+                        <input type="radio" id="difficulty-easy" name="difficulty" value="1">
+                        <label for="difficulty-easy">Kolay</label>
+                        <div class="difficulty-description">Daha az düşman, yavaş hareket</div>
+                    </div>
+                    <div class="difficulty-option">
+                        <input type="radio" id="difficulty-medium" name="difficulty" value="2" checked>
+                        <label for="difficulty-medium">Orta</label>
+                        <div class="difficulty-description">Normal sayıda düşman, orta hız</div>
+                    </div>
+                    <div class="difficulty-option">
+                        <input type="radio" id="difficulty-hard" name="difficulty" value="3">
+                        <label for="difficulty-hard">Zor</label>
+                        <div class="difficulty-description">Çok sayıda düşman, hızlı hareket</div>
+                    </div>
+                    
+                    <div class="settings-row" style="margin-top: 20px;">
+                        <span class="settings-label">Grafik Kalitesi</span>
+                        <div class="slider-container">
+                            <input type="range" min="1" max="3" step="1" value="3" class="slider" id="graphics-quality">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-buttons">
+                    <button class="btn" onclick="saveSettings()">KAYDET</button>
+                    <button class="btn btn-secondary" onclick="closeSettings()">İPTAL</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="screen-overlay" id="achievements-screen">
+            <h1 class="screen-title">Başarılar</h1>
+            <div class="achievements-grid" id="achievements-grid">
+                <!-- Başarılar JavaScript ile doldurulacak -->
+            </div>
+            <button class="btn btn-secondary" onclick="showScreen('start-screen')">GERİ</button>
+        </div>
+    </div>
+<script src="script.js"></script> 
+</body>
+</html>
